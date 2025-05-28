@@ -12,12 +12,16 @@ class ManageFuelCardsScreen extends StatefulWidget {
 
 class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
   List<dynamic> cards = [];
+  List<dynamic> filteredCards = [];
   bool isLoading = true;
   Set<int> editingCards = {};
 
   final newDriver = TextEditingController();
   final newPlate = TextEditingController();
-  final newProduct = TextEditingController();
+  final searchPlate = TextEditingController();
+  String? selectedFuel;
+
+  final List<String> fuelTypes = ['Gasoline', 'Diesel'];
 
   @override
   void initState() {
@@ -30,10 +34,25 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
       final res = await widget.dio.get("http://10.0.2.2:8801/cards");
       setState(() {
         cards = res.data;
+        filteredCards = cards;
         isLoading = false;
       });
     } catch (_) {
       showSnackbar("שגיאה בטעינת כרטיסים", true);
+    }
+  }
+
+  void filterCards(String query) {
+    final q = query.trim();
+    if (q.isEmpty) {
+      setState(() => filteredCards = cards);
+    } else {
+      setState(() {
+        filteredCards =
+            cards
+                .where((card) => card['plate'].toString().contains(q))
+                .toList();
+      });
     }
   }
 
@@ -42,7 +61,8 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
       SnackBar(
         content: Text(message, textDirection: TextDirection.rtl),
         backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       ),
     );
   }
@@ -50,7 +70,7 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
   Future<void> createCard() async {
     if (newDriver.text.isEmpty ||
         newPlate.text.isEmpty ||
-        newProduct.text.isEmpty) {
+        selectedFuel == null) {
       showSnackbar("נא למלא את כל השדות", true);
       return;
     }
@@ -61,13 +81,13 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
         data: {
           "driver_name": newDriver.text,
           "plate": newPlate.text,
-          "product_name": newProduct.text,
+          "product_name": selectedFuel,
         },
       );
       showSnackbar("הבקשה נשלחה לאישור", false);
       newDriver.clear();
       newPlate.clear();
-      newProduct.clear();
+      setState(() => selectedFuel = null);
     } catch (_) {
       showSnackbar("שגיאה בשליחת הבקשה", true);
     }
@@ -92,6 +112,26 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
   }
 
   Future<void> deleteCard(dynamic card) async {
+    final confirm = await showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text("אישור מחיקה"),
+            content: const Text("האם אתה בטוח שברצונך לבקש מחיקת כרטיס זה?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("ביטול"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("מחק"),
+              ),
+            ],
+          ),
+    );
+    if (confirm != true) return;
+
     try {
       await widget.dio.post(
         "http://10.0.2.2:8801/cards/card-requests/delete",
@@ -125,6 +165,25 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
             isEditing
                 ? buildEditableField(card, "product_name", "סוג דלק")
                 : buildStaticField("⛽ סוג דלק", card["product_name"]),
+            const SizedBox(height: 10),
+            if (!isEditing)
+              Container(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    "בקשה ממתינה",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
             const SizedBox(height: 10),
             isEditing
                 ? Row(
@@ -164,6 +223,24 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
                   ),
                 ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextField(
+        controller: searchPlate,
+        textDirection: TextDirection.rtl,
+        onChanged: filterCards,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.search),
+          labelText: "חפש לפי מספר רכב",
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.grey[100],
         ),
       ),
     );
@@ -217,7 +294,28 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
             const SizedBox(height: 10),
             buildInput(newDriver, "שם נהג"),
             buildInput(newPlate, "מספר רכב"),
-            buildInput(newProduct, "סוג דלק"),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: DropdownButtonFormField<String>(
+                value: selectedFuel,
+                decoration: InputDecoration(
+                  labelText: "סוג דלק",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+                items:
+                    fuelTypes
+                        .map(
+                          (type) =>
+                              DropdownMenuItem(value: type, child: Text(type)),
+                        )
+                        .toList(),
+                onChanged: (val) => setState(() => selectedFuel = val),
+              ),
+            ),
             ElevatedButton.icon(
               onPressed: createCard,
               icon: const Icon(Icons.add),
@@ -264,7 +362,17 @@ class _ManageFuelCardsScreenState extends State<ManageFuelCardsScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   buildNewCardForm(),
-                  ...cards.map(buildCard).toList(),
+                  const Divider(height: 30, thickness: 1.2),
+                  buildSearchBar(),
+                  if (filteredCards.isEmpty)
+                    const Center(
+                      child: Text(
+                        "אין כרטיסים להצגה כרגע",
+                        textDirection: TextDirection.rtl,
+                      ),
+                    )
+                  else
+                    ...filteredCards.map(buildCard).toList(),
                 ],
               ),
     );
