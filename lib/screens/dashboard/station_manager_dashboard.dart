@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 
 import '../cards/manage_card_requests.dart';
-import '../logs/view_fuel_logs.dart';
 import '../requests/manage_abnormal_requests.dart';
 import '../../widgets/dashboard_screen_layout.dart';
+import '../logs/view_fuel_logs_grouped.dart';
 
 class StationManagerDashboard extends StatelessWidget {
   final Dio dio;
+  final Map<String, dynamic> user;
 
-  const StationManagerDashboard({super.key, required this.dio});
+  const StationManagerDashboard({
+    super.key,
+    required this.dio,
+    required this.user,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +38,9 @@ class StationManagerDashboard extends StatelessWidget {
           buildButton(context, "צפייה ביומני תדלוק", Icons.receipt_long, () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ViewFuelLogsScreen(dio: dio)),
+              MaterialPageRoute(
+                builder: (_) => GroupedFuelLogsScreen(dio: dio, user: user),
+              ),
             );
           }),
           buildButton(

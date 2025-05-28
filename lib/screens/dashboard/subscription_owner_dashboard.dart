@@ -2,14 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 
 import '../requests/submit_abnormal_fuel.dart';
-import '../logs/view_fuel_logs.dart';
+// import '../logs/view_fuel_logs.dart';
 import '../cards/manage_fuel_cards.dart';
 import '../../widgets/dashboard_screen_layout.dart';
+import '../logs/view_fuel_logs_grouped.dart';
 
 class SubscriptionOwnerDashboard extends StatelessWidget {
   final Dio dio;
+  final Map<String, dynamic> user;
 
-  const SubscriptionOwnerDashboard({super.key, required this.dio});
+
+  const SubscriptionOwnerDashboard({
+    super.key,
+    required this.dio,
+    required this.user,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +39,9 @@ class SubscriptionOwnerDashboard extends StatelessWidget {
           buildButton(context, "יומני תדלוק", Icons.article, () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ViewFuelLogsScreen(dio: dio)),
+              MaterialPageRoute(
+                builder: (_) => GroupedFuelLogsScreen(dio: dio, user: user),
+              ),
             );
           }),
           buildButton(context, "ניהול כרטיסי תדלוק", Icons.credit_card, () {

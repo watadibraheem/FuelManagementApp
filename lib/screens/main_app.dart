@@ -32,8 +32,8 @@ class _MainAppState extends State<MainApp> {
 
     final screens = [
       role == "admin"
-          ? StationManagerDashboard(dio: widget.dio)
-          : SubscriptionOwnerDashboard(dio: widget.dio),
+          ? StationManagerDashboard(dio: widget.dio, user: widget.user)
+          : SubscriptionOwnerDashboard(dio: widget.dio, user: widget.user),
       ProfileScreen(user: widget.user, dio: widget.dio),
     ];
 
