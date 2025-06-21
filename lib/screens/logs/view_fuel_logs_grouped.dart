@@ -1,5 +1,3 @@
-// ✅ Improved filter dropdowns with "All" option and reset logic
-
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
@@ -39,9 +37,15 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
 
   Future<void> fetchLogs() async {
     try {
-      final abnormalRes = await widget.dio.get("http://10.0.2.2:8801/fuel-requests");
-      final normalRes = await widget.dio.get("http://10.0.2.2:8801/fuel-requests/normal-logs");
-      final resCards = await widget.dio.get("http://10.0.2.2:8801/cards/cards-plates");
+      final abnormalRes = await widget.dio.get(
+        "http://10.0.2.2:8801/fuel-requests",
+      );
+      final normalRes = await widget.dio.get(
+        "http://10.0.2.2:8801/fuel-requests/normal-logs",
+      );
+      final resCards = await widget.dio.get(
+        "http://10.0.2.2:8801/cards/cards-plates",
+      );
 
       if (abnormalRes.statusCode == 200 && normalRes.statusCode == 200) {
         final abnormalData = abnormalRes.data;
@@ -51,9 +55,13 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
         if (platesData is List) {
           allCards.addAll(
             platesData
-                .map((l) => l['plate']?.toString())
+                .map((l) {
+                  final plate = l['plate']?.toString() ?? '';
+                  final driver = l['driver_name']?.toString() ?? '';
+                  if (plate.trim().isEmpty) return null;
+                  return driver.trim().isNotEmpty ? '$plate - $driver' : plate;
+                })
                 .whereType<String>()
-                .where((v) => v.trim().isNotEmpty)
                 .toSet()
                 .toList(),
           );
@@ -124,31 +132,41 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
   Widget buildFilters() {
     return Column(
       children: [
-        DropdownButton<String>(
-          hint: const Text("סנן לפי כרטיס"),
-          value: selectedCard,
-          onChanged: (val) => setState(() => selectedCard = val),
-          items: allCards
-              .map((plate) => DropdownMenuItem(value: plate, child: Text(plate)))
-              .toList(),
-        ),
+        if (!isAdmin)
+          DropdownButton<String>(
+            hint: const Text("סנן לפי כרטיס"),
+            value: selectedCard,
+            onChanged: (val) => setState(() => selectedCard = val),
+            items:
+                allCards
+                    .map(
+                      (plate) =>
+                          DropdownMenuItem(value: plate, child: Text(plate)),
+                    )
+                    .toList(),
+          ),
         if (isAdmin)
           DropdownButton<String>(
             hint: const Text("סנן לפי עסק"),
             value: selectedBusiness,
             onChanged: (val) => setState(() => selectedBusiness = val),
-            items: allBusinesses
-                .map((b) => DropdownMenuItem(value: b, child: Text(b)))
-                .toList(),
+            items:
+                allBusinesses
+                    .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                    .toList(),
           ),
       ],
     );
   }
 
   Widget buildLogCard(dynamic log) {
-    final createdAt = log['created_at'] != null
-        ? DateFormat('dd/MM/yyyy HH:mm', 'he').format(DateTime.parse(log['created_at']))
-        : '-';
+    final createdAt =
+        log['created_at'] != null
+            ? DateFormat(
+              'dd/MM/yyyy HH:mm',
+              'he',
+            ).format(DateTime.parse(log['created_at']))
+            : '-';
     final statusColor = getStatusColor(log['status']);
 
     return Card(
@@ -168,7 +186,10 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
             if (log['status'] != null)
               Container(
                 margin: const EdgeInsets.only(top: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: statusColor,
                   borderRadius: BorderRadius.circular(12),
@@ -190,22 +211,41 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
 
     return ListView(
       padding: const EdgeInsets.all(12),
-      children: grouped.entries.map((entry) {
-        final logs = entry.value.where((log) {
-          final matchCard = selectedCard == 'All' || log['plate'] == selectedCard;
-          final matchBiz = !isAdmin || selectedBusiness == 'All' || log['business_name'] == selectedBusiness;
-          return matchCard && matchBiz;
-        }).toList();
+      children:
+          grouped.entries.map((entry) {
+            final logs =
+                entry.value.where((log) {
+                  String? selectedPlate;
+                  if (selectedCard == 'All') {
+                    selectedPlate = null;
+                  } else {
+                    // Extract plate number before " - "
+                    selectedPlate = selectedCard?.split(' - ').first.trim();
+                  }
+                  final matchCard =
+                      selectedPlate == null || log['plate'] == selectedPlate;
+                  final matchBiz =
+                      !isAdmin ||
+                      selectedBusiness == 'All' ||
+                      log['business_name'] == selectedBusiness;
+                  return matchCard && matchBiz;
+                }).toList();
 
-        if (logs.isEmpty) return const SizedBox();
+            if (logs.isEmpty) return const SizedBox();
 
-        final title = DateFormat('MMMM yyyy', 'he').format(DateTime.parse('${entry.key}-01'));
+            final title = DateFormat(
+              'MMMM yyyy',
+              'he',
+            ).format(DateTime.parse('${entry.key}-01'));
 
-        return ExpansionTile(
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          children: logs.map(buildLogCard).toList(),
-        );
-      }).toList(),
+            return ExpansionTile(
+              title: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              children: logs.map(buildLogCard).toList(),
+            );
+          }).toList(),
     );
   }
 
@@ -219,32 +259,30 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
           backgroundColor: const Color(0xFFFFD10D),
           foregroundColor: Colors.black,
           bottom: const TabBar(
-            tabs: [
-              Tab(text: 'חריגים'),
-              Tab(text: 'רגילים'),
-            ],
+            tabs: [Tab(text: 'חריגים'), Tab(text: 'רגילים')],
           ),
         ),
-        body: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: buildFilters(),
-                  ),
-                  const Divider(height: 0),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        buildGroupedLogs(groupedAbnormalLogs),
-                        buildGroupedLogs(groupedNormalLogs),
-                      ],
+        body:
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: buildFilters(),
                     ),
-                  ),
-                ],
-              ),
+                    const Divider(height: 0),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          buildGroupedLogs(groupedAbnormalLogs),
+                          buildGroupedLogs(groupedNormalLogs),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
       ),
     );
   }
