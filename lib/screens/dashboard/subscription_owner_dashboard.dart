@@ -6,11 +6,11 @@ import '../requests/submit_abnormal_fuel.dart';
 import '../cards/manage_fuel_cards.dart';
 import '../../widgets/dashboard_screen_layout.dart';
 import '../logs/view_fuel_logs_grouped.dart';
+import '../requests/MyRequestScreen.dart';
 
 class SubscriptionOwnerDashboard extends StatelessWidget {
   final Dio dio;
   final Map<String, dynamic> user;
-
 
   const SubscriptionOwnerDashboard({
     super.key,
@@ -49,6 +49,14 @@ class SubscriptionOwnerDashboard extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => ManageFuelCardsScreen(dio: dio),
+              ),
+            );
+          }),
+          buildButton(context, "הבקשות שלי", Icons.request_page, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MyRequestsScreen(dio: dio, user: user),
               ),
             );
           }),
