@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dashboard/worker_fueling_screen.dart';
 import 'main_app.dart';
@@ -29,6 +31,30 @@ class _LoginScreenState extends State<LoginScreen> {
     dio = Dio();
     cookieJar = CookieJar();
     dio.interceptors.add(CookieManager(cookieJar));
+    checkLoginStatus(); // check if already logged in
+  }
+
+  Future<void> checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('user');
+
+    if (userJson != null) {
+      final user = jsonDecode(userJson);
+      final role = user["role"];
+
+      if (!mounted) return;
+      if (role == "worker") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => WorkerFuelingScreen(dio: dio)),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainApp(user: user, dio: dio)),
+        );
+      }
+    }
   }
 
   void loginUser() async {
@@ -55,6 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = response.data["user"];
         final role = user["role"];
 
+        // Save to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(user));
+
+        if (!mounted) return;
         if (role == "worker") {
           Navigator.pushReplacement(
             context,
