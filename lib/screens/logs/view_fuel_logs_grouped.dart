@@ -165,7 +165,7 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
             ? DateFormat(
               'dd/MM/yyyy HH:mm',
               'he',
-            ).format(DateTime.parse(log['created_at']))
+            ).format(DateTime.parse(log['created_at']).toLocal())
             : '-';
     final statusColor = getStatusColor(log['status']);
 
@@ -206,30 +206,55 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
   }
 
   Widget buildGroupedLogs(Map<String, List<dynamic>> grouped) {
-    if (grouped.isEmpty)
+    if (grouped.isEmpty) {
       return const Center(child: Text("\u274C אין לוגים להצגה"));
+    }
+
+    final now = DateTime.now();
+    final currentMonthKey = DateFormat('yyyy-MM').format(now);
+
+    final sortedEntries =
+        grouped.entries.toList()..sort((a, b) {
+          final aDate = DateTime.parse('${a.key}-01');
+          final bDate = DateTime.parse('${b.key}-01');
+
+          if (a.key == currentMonthKey) return -1;
+          if (b.key == currentMonthKey) return 1;
+
+          return bDate.compareTo(aDate); // Descending order
+        });
 
     return ListView(
       padding: const EdgeInsets.all(12),
       children:
-          grouped.entries.map((entry) {
+          sortedEntries.map((entry) {
             final logs =
                 entry.value.where((log) {
-                  String? selectedPlate;
-                  if (selectedCard == 'All') {
-                    selectedPlate = null;
-                  } else {
-                    // Extract plate number before " - "
-                    selectedPlate = selectedCard?.split(' - ').first.trim();
-                  }
-                  final matchCard =
-                      selectedPlate == null || log['plate'] == selectedPlate;
-                  final matchBiz =
-                      !isAdmin ||
-                      selectedBusiness == 'All' ||
-                      log['business_name'] == selectedBusiness;
-                  return matchCard && matchBiz;
-                }).toList();
+                    String? selectedPlate;
+                    if (selectedCard == 'All') {
+                      selectedPlate = null;
+                    } else {
+                      selectedPlate = selectedCard?.split(' - ').first.trim();
+                    }
+
+                    final matchCard =
+                        selectedPlate == null || log['plate'] == selectedPlate;
+                    final matchBiz =
+                        !isAdmin ||
+                        selectedBusiness == 'All' ||
+                        log['business_name'] == selectedBusiness;
+
+                    return matchCard && matchBiz;
+                  }).toList()
+                  ..sort((a, b) {
+                    final dateA =
+                        DateTime.tryParse(a['created_at'] ?? '') ??
+                        DateTime(2000);
+                    final dateB =
+                        DateTime.tryParse(b['created_at'] ?? '') ??
+                        DateTime(2000);
+                    return dateB.compareTo(dateA); // Sort newest to oldest
+                  });
 
             if (logs.isEmpty) return const SizedBox();
 
@@ -248,6 +273,8 @@ class _GroupedFuelLogsScreenState extends State<GroupedFuelLogsScreen> {
           }).toList(),
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {

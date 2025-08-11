@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class WorkerFuelingScreen extends StatefulWidget {
   final Dio dio;
@@ -18,7 +20,7 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
 
   @override
   void initState() {
-    super.initState();
+    super.initState();    
     fetchFuelRequests();
   }
 
@@ -36,6 +38,7 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
         isLoading = false;
       });
     } catch (e) {
+      buildLogoutButton();
       showSnack("שגיאה בטעינת הבקשות", isError: true);
       setState(() => isLoading = false);
     }
@@ -168,7 +171,9 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
 
   Widget buildLogoutButton() {
     return ElevatedButton.icon(
-      onPressed: () {
+      onPressed: () async{
+        final prefs = await SharedPreferences.getInstance();
+        prefs.remove('user');
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -197,10 +202,18 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
           isLoading
               ? const Center(child: CircularProgressIndicator())
               : fuelRequests.isEmpty
-              ? const Center(
-                child: Text(
-                  "אין בקשות תדלוק ממתינות 🚫",
-                  style: TextStyle(fontSize: 16),
+              ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "אין בקשות תדלוק ממתינות 🚫",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 20),
+                    buildLogoutButton(),
+                  ],
                 ),
               )
               : ListView(
