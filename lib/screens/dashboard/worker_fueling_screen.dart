@@ -24,6 +24,23 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
     fetchFuelRequests();
   }
 
+String formatLocalDate(String isoDate) {
+    try {
+      final local = DateTime.parse(isoDate);
+      // final local = utc.toLocal();
+      final formatted =
+          "${local.year.toString().padLeft(4, '0')}/"
+          "${local.month.toString().padLeft(2, '0')}/"
+          "${local.day.toString().padLeft(2, '0')} "
+          "${local.hour.toString().padLeft(2, '0')}:"
+          "${local.minute.toString().padLeft(2, '0')}";
+      return formatted;
+    } catch (_) {
+      return isoDate;
+    }
+  }
+
+
   Future<void> fetchFuelRequests() async {
     try {
       final response = await widget.dio.get(
@@ -39,7 +56,6 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
       });
     } catch (e) {
       buildLogoutButton();
-      showSnack("שגיאה בטעינת הבקשות", isError: true);
       setState(() => isLoading = false);
     }
   }
@@ -89,6 +105,7 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
     final String business = request["business_name"] ?? "---";
     final String status = request["status"] ?? "---";
     final amount = request["amount"] ?? 0;
+    final date = formatLocalDate(request['created_at'] ?? '---');
     final Color badgeColor =
         {
           "approved": Colors.green,
@@ -113,6 +130,7 @@ class _WorkerFuelingScreenState extends State<WorkerFuelingScreen> {
             buildRow("🚗 רכב", plate),
             buildRow("💰 סכום בבקשה", "₪$amount"),
             buildRow("🏢 חברה", business),
+            buildRow("🕒 תאריך", date),
             const SizedBox(height: 6),
             Container(
               alignment: Alignment.centerRight,

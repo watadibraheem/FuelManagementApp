@@ -62,6 +62,22 @@ class _ManageCardRequestsScreenState extends State<ManageCardRequestsScreen> {
       showSnackbar("שגיאה בעדכון הבקשה", true);
     }
   }
+  
+  String formatLocalDate(String isoDate) {
+    try {
+      final local = DateTime.parse(isoDate);
+      // final local = utc.toLocal();
+      final formatted =
+          "${local.year.toString().padLeft(4, '0')}/"
+          "${local.month.toString().padLeft(2, '0')}/"
+          "${local.day.toString().padLeft(2, '0')} "
+          "${local.hour.toString().padLeft(2, '0')}:"
+          "${local.minute.toString().padLeft(2, '0')}";
+      return formatted;
+    } catch (_) {
+      return isoDate;
+    }
+  }
 
   String translateAction(String action) {
     switch (action) {
@@ -121,17 +137,18 @@ class _ManageCardRequestsScreenState extends State<ManageCardRequestsScreen> {
                 if (isUpdate) ...[
                   buildRow(
                     "👤 נהג",
-                    "${old['driver_name'] ?? '---'} ➡️ ${req['driver_name'] ?? '---'}",
+                    "${old['driver_name'] ?? '---'} ⬅️ ${req['driver_name'] ?? '---'}",
                   ),
                   buildRow(
                     "🚗 רכב",
-                    "${old['plate'] ?? '---'} ➡️ ${req['plate'] ?? '---'}",
+                    "${old['plate'] ?? '---'} ⬅️ ${req['plate'] ?? '---'}",
                   ),
                   buildRow(
                     "⛽ דלק",
-                    "${old['product_name'] ?? '---'} ➡️ ${req['product_name'] ?? '---'}",
+                    "${old['product_name'] ?? '---'} ⬅️ ${req['product_name'] ?? '---'}",
                   ),
                   buildRow("🏢 חברה", req["business_name"] ?? "---"),
+                  buildRow("🕒 תאריך", formatLocalDate(req['created_at'])),
                 ],
                 const SizedBox(height: 12),
                 Row(
