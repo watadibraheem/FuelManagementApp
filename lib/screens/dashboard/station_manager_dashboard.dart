@@ -5,6 +5,7 @@ import '../cards/manage_card_requests.dart';
 import '../requests/manage_abnormal_requests.dart';
 import '../../widgets/dashboard_screen_layout.dart';
 import '../logs/view_fuel_logs_grouped.dart';
+import '../create_user_screen.dart'; // ✅ Import CreateUserScreen
 
 class StationManagerDashboard extends StatelessWidget {
   final Dio dio;
@@ -22,6 +23,13 @@ class StationManagerDashboard extends StatelessWidget {
       title: "ניהול תחנה",
       child: Column(
         children: [
+          if (user['role'] == 'admin') // ✅ Only show for admin
+            buildButton(context, "ניהול משתמשים", Icons.person_add, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => CreateUserScreen(dio: dio)),
+              );
+            }),
           buildButton(
             context,
             "אישור בקשות תדלוק חריגות",

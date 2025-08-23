@@ -16,8 +16,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
   late Dio dio;
   late CookieJar cookieJar;
@@ -31,33 +31,30 @@ class _LoginScreenState extends State<LoginScreen> {
     dio = Dio();
     cookieJar = CookieJar();
     dio.interceptors.add(CookieManager(cookieJar));
-    checkLoginStatus(); // check if already logged in
+    checkLoginStatus();
   }
 
   Future<void> checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString('user');
-
     if (userJson != null) {
       final user = jsonDecode(userJson);
       final role = user["role"];
-
       if (!mounted) return;
-      if (role == "worker") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => WorkerFuelingScreen(dio: dio)),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MainApp(user: user, dio: dio)),
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) =>
+                  role == "worker"
+                      ? WorkerFuelingScreen(dio: dio)
+                      : MainApp(user: user, dio: dio),
+        ),
+      );
     }
   }
 
-  void loginUser() async {
+  Future<void> loginUser() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
@@ -72,36 +69,37 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final response = await dio.post(
+      final res = await dio.post(
         "http://10.0.2.2:8801/users/login",
         data: {"email": email, "password": password},
       );
 
-      if (response.statusCode == 200) {
-        final user = response.data["user"];
-        final role = user["role"];
-
-        // Save to SharedPreferences
+      final user = res.data["user"];
+      if (user['status'] != 2) {
+        setState(() => error = 'המשתמש אינו פעיל');
+      } else {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user', jsonEncode(user));
-
         if (!mounted) return;
-        if (role == "worker") {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => WorkerFuelingScreen(dio: dio)),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => MainApp(user: user, dio: dio)),
-          );
-        }
-      } else {
-        setState(() => error = 'אימייל או סיסמה שגויים');
+        final route =
+            user["role"] == "worker"
+                ? WorkerFuelingScreen(dio: dio)
+                : MainApp(user: user, dio: dio);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => route),
+        );
       }
-    } catch (e) {
-      setState(() => error = 'שגיאה: ${e.toString()}');
+    } on DioException catch (e) {
+      final msg =
+          e.response?.statusCode == 401
+              ? (e.response?.data['message'] == 'Invalid password'
+                  ? 'סיסמה שגויה'
+                  : 'אימייל לא נמצא')
+              : 'שגיאה, נסה שוב';
+      setState(() => error = msg);
+    } catch (_) {
+      setState(() => error = 'שגיאה, נסה שוב');
     }
 
     setState(() => isLoading = false);
@@ -116,11 +114,11 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
+              // Logo & Title
               Image.network(
                 "http://10.0.2.2:8801/uploads/sunLogo.png",
                 width: 180,
                 height: 180,
-                fit: BoxFit.contain,
               ),
               const SizedBox(height: 10),
               const Text(
@@ -132,13 +130,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+
+              // Fields
               TextField(
                 controller: emailController,
-                textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
                   hintText: 'אימייל',
-                  fillColor: Colors.white,
                   filled: true,
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -148,20 +147,23 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
                   hintText: 'סיסמה',
-                  fillColor: Colors.white,
                   filled: true,
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Error message
               if (error.isNotEmpty)
                 Text(error, style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 20),
+
+              // Login button
               ElevatedButton(
                 onPressed: isLoading ? null : loginUser,
                 style: ElevatedButton.styleFrom(
